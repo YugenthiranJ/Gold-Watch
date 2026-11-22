@@ -24,3 +24,48 @@
         font-size: 10px;
     }
 }
+
+/* Indian gold price section */
+.india-gold {
+    margin-top: 20px;
+}
+
+.india-gold h2 {
+    margin-bottom: 8px;
+}
+
+.india-gold .gold-rate {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px;
+    margin-bottom: 10px;
+    border-radius: 12px;
+    background: var(--card-bg, #1e293b);
+}
+
+.india-gold .gold-rate span {
+    font-size: 14px;
+    color: var(--text-secondary, #94a3b8);
+}
+
+.india-gold .gold-rate strong {
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.india-gold .gold-rate small {
+    font-size: 13px;
+    color: var(--text-secondary, #94a3b8);
+}
+
+.india-gold .rate-source,
+#indiaStatus {
+    font-size: 12px;
+    color: var(--text-secondary, #94a3b8);
+}
+
+.india-gold .rate-source a {
+    color: inherit;
+    text-decoration: underline;
+}

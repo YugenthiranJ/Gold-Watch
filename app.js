@@ -356,10 +356,101 @@ render();
 
 // Fetch prices automatically whenever the page opens
 loadGoldPrices();
+loadIndianGoldRates();
 
-// Manual refresh button
-$("refreshBtn").addEventListener("click", loadGoldPrices);
+$("refreshBtn").addEventListener("click", async () => {
+  await Promise.allSettled([
+    loadGoldPrices(),
+    loadIndianGoldRates()
+  ]);
+});
 
 if("serviceWorker" in navigator && location.protocol.startsWith("http"))navigator.serviceWorker.register("./sw.js").catch(console.warn);
 window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredInstall=e;$("installBtn").classList.remove("hidden");});
 $("installBtn").addEventListener("click",async()=>{if(!deferredInstall)return;deferredInstall.prompt();await deferredInstall.userChoice;deferredInstall=null;$("installBtn").classList.add("hidden");});
+
+
+const INDIA_GOLD_API =
+  "https://snapdata.dev/api/v1/gold/in/latest.json";
+
+async function loadIndianGoldRates() {
+  const status = document.getElementById("indiaStatus");
+
+  status.textContent = "Fetching Indian gold prices...";
+
+  try {
+    const response = await fetch(INDIA_GOLD_API, {
+      method: "GET",
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.dataset !== "gold" || data.scope !== "in") {
+      throw new Error("Unexpected Indian gold data");
+    }
+
+    if (!data.sources?.some(source => source.id === "ibja")) {
+      throw new Error("IBJA source could not be verified");
+    }
+
+    const observations = data.observations || [];
+
+    function getRate(purity) {
+      const row = observations.find(item =>
+        item.instrument === `XAU.${purity}` &&
+        item.instrument_id === `XAU.${purity}.INR.G` &&
+        item.source === "ibja" &&
+        item.is_trading_day === true &&
+        Number.isFinite(Number(item.value)) &&
+        Number(item.value) > 0
+      );
+
+      if (!row) {
+        throw new Error(`${purity} rate unavailable`);
+      }
+
+      return Number(row.value);
+    }
+
+    // Each purity comes directly from the provider.
+    const rate24 = getRate("24K");
+    const rate22 = getRate("22K");
+    const rate18 = getRate("18K");
+
+    function displayRate(id, price) {
+      document.getElementById(id).textContent =
+        "₹" + price.toLocaleString("en-IN");
+
+      document.getElementById(id + "Eight").textContent =
+        "₹" + (price * 8).toLocaleString("en-IN", {
+          maximumFractionDigits: 2
+        }) + " per 8g";
+    }
+
+    displayRate("india24", rate24);
+    displayRate("india22", rate22);
+    displayRate("india18", rate18);
+
+    status.textContent =
+      `Updated: ${data.observations[0].date} · IBJA benchmark`;
+
+    // Save the independently fetched rates locally.
+    localStorage.setItem("goldWatchIndianRates", JSON.stringify({
+      date: data.observations[0].date,
+      rate24,
+      rate22,
+      rate18,
+      fetchedAt: new Date().toISOString()
+    }));
+
+  } catch (error) {
+    console.error("Indian gold API error:", error);
+    status.textContent =
+      "Indian rate update failed: " + error.message;
+  }
+}
