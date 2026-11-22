@@ -147,7 +147,219 @@ $("importFile").addEventListener("change",async e=>{
 $("clearBtn").addEventListener("click",()=>{if(confirm("Delete all Gold Watch prices, alerts and settings stored in this browser?")){state={entries:[],alerts:[],adjustment:0,notified:[]};saveState();render();showToast("Local data cleared.");}});
 function download(content,name,type){const blob=new Blob([content],{type}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;a.click();URL.revokeObjectURL(url);}
 window.addEventListener("resize",()=>{if(state.entries.length)renderChart();});
-loadState();render();
+
+// ==========================================
+// AUTOMATIC GOLD PRICE INTEGRATION
+// ==========================================
+
+const GOLD_API =
+    "https://xaudaily.com/readings.en.json?src=gold-watch";
+
+const FX_API =
+    "https://api.frankfurter.dev/v2/rates";
+
+async function fetchJSON(url) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
+    try {
+        const response = await fetch(url, {
+            method: "GET",
+            cache: "no-store",
+            signal: controller.signal
+        });
+
+        if (!response.ok) {
+            throw new Error(`API returned HTTP ${response.status}`);
+        }
+
+        return await response.json();
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+function validNumber(value) {
+    return Number.isFinite(Number(value)) && Number(value) > 0;
+}
+
+function previousCalendarDate(dateString, days = 7) {
+    const date = new Date(dateString + "T12:00:00Z");
+    date.setUTCDate(date.getUTCDate() - days);
+    return date.toISOString().slice(0, 10);
+}
+
+function findLatestFxOnOrBefore(rows, targetDate) {
+    return rows
+        .filter(row =>
+            row.quote === "INR" &&
+            row.date <= targetDate &&
+            validNumber(row.rate)
+        )
+        .sort((a, b) => b.date.localeCompare(a.date))[0];
+}
+
+async function loadGoldPrices() {
+    const refreshButton = $("refreshBtn");
+
+    if (refreshButton) {
+        refreshButton.disabled = true;
+        refreshButton.textContent = "Fetching...";
+    }
+
+    $("dataStatus").textContent = "Fetching latest market prices...";
+
+    try {
+        // 1. Fetch COMEX gold data
+        const goldData = await fetchJSON(GOLD_API);
+
+        const gold = goldData?.readings?.gold;
+        const live = gold?.live;
+        const rows = gold?.rows;
+
+        if (!gold || !live || !Array.isArray(rows)) {
+            throw new Error("Unexpected gold API response.");
+        }
+
+        if (gold.stale === true) {
+            throw new Error("Gold provider reports stale data.");
+        }
+
+        const currentGold = Number(live.last);
+        const currentDate = live.date;
+
+        if (!validNumber(currentGold) || !currentDate) {
+            throw new Error("Invalid latest gold price.");
+        }
+
+        // 2. Find previous completed trading-day candle
+        const previousRows = rows
+            .filter(row =>
+                row.d < currentDate &&
+                validNumber(row.c)
+            )
+            .sort((a, b) => b.d.localeCompare(a.d));
+
+        const previousRow = previousRows[0];
+
+        if (!previousRow) {
+            throw new Error("Previous trading-day close unavailable.");
+        }
+
+        const previousGold = Number(previousRow.c);
+
+        // 3. Fetch historical USD/INR reference rates
+        const fromDate = previousCalendarDate(previousRow.d, 7);
+
+        const fxURL =
+            `${FX_API}?base=USD&quotes=INR` +
+            `&from=${fromDate}&to=${currentDate}`;
+
+        const fxRows = await fetchJSON(fxURL);
+
+        if (!Array.isArray(fxRows) || fxRows.length === 0) {
+            throw new Error("USD/INR data unavailable.");
+        }
+
+        // 4. Select appropriate FX rates for each gold date
+        const currentFx = findLatestFxOnOrBefore(
+            fxRows,
+            currentDate
+        );
+
+        const previousFx = findLatestFxOnOrBefore(
+            fxRows,
+            previousRow.d
+        );
+
+        if (!currentFx || !previousFx) {
+            throw new Error("Required USD/INR historical rates unavailable.");
+        }
+
+        // 5. Save current and previous market entries
+        const savedAt = new Date().toISOString();
+
+        const previousEntry = {
+            date: previousRow.d,
+            cme: previousGold,
+            fx: Number(previousFx.rate),
+            savedAt
+        };
+
+        const currentEntry = {
+            date: currentDate,
+            cme: currentGold,
+            fx: Number(currentFx.rate),
+            savedAt
+        };
+
+        function saveEntry(entry) {
+            const index = state.entries.findIndex(
+                item => item.date === entry.date
+            );
+
+            if (index >= 0) {
+                state.entries[index] = entry;
+            } else {
+                state.entries.push(entry);
+            }
+        }
+
+        saveEntry(previousEntry);
+        saveEntry(currentEntry);
+
+        state.entries.sort(
+            (a, b) => a.date.localeCompare(b.date)
+        );
+
+        // Store source information for display
+        state.lastFetch = {
+            goldDate: currentDate,
+            goldTime: live.time || "",
+            goldSource: gold.source || "XAU Daily",
+            fxDate: currentFx.date,
+            fetchedAt: savedAt
+        };
+
+        saveState();
+
+        // 6. Refresh existing dashboard
+        render();
+
+        $("dataStatus").textContent =
+            `Updated · Gold: ${currentDate} ${live.time || ""} · FX: ${currentFx.date}`;
+
+        showToast("Gold prices updated successfully!");
+
+    } catch (error) {
+        console.error("Gold Watch API error:", error);
+
+        $("dataStatus").textContent =
+            "Price update failed · " + error.message;
+
+        showToast("Unable to fetch prices. Check your connection.");
+
+    } finally {
+        if (refreshButton) {
+            refreshButton.disabled = false;
+            refreshButton.textContent = "↻ Refresh prices";
+        }
+    }
+}
+
+// ==========================================
+// APPLICATION INITIALIZATION
+// ==========================================
+
+loadState();
+render();
+
+// Fetch prices automatically whenever the page opens
+loadGoldPrices();
+
+// Manual refresh button
+$("refreshBtn").addEventListener("click", loadGoldPrices);
+
 if("serviceWorker" in navigator && location.protocol.startsWith("http"))navigator.serviceWorker.register("./sw.js").catch(console.warn);
 window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredInstall=e;$("installBtn").classList.remove("hidden");});
 $("installBtn").addEventListener("click",async()=>{if(!deferredInstall)return;deferredInstall.prompt();await deferredInstall.userChoice;deferredInstall=null;$("installBtn").classList.add("hidden");});

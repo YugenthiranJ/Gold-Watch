@@ -16,7 +16,14 @@
       <div class="brand-mark">Au</div>
       <div><div class="brand-name">Gold Watch</div><div class="brand-sub">PERSONAL MARKET TRACKER</div></div>
     </div>
-    <button id="installBtn" class="button button-quiet hidden">Install app</button>
+    <div class="header-actions">
+      <button id="refreshBtn" class="button button-primary">
+          ↻ Refresh prices
+      </button>
+      <button id="installBtn" class="button button-quiet hidden">
+          Install app
+      </button>
+  </div>
   </header>
 
   <main class="container">
@@ -115,6 +122,12 @@
       <p><strong>Important:</strong> Gold Watch provides indicative calculations for personal tracking, not investment advice or a guaranteed Chennai retail rate. CME futures, Indian spot bullion and jewellery prices can differ. Prices are not fetched automatically in this starter version; enter verified quotes manually or import your own CSV.</p>
       <p>Calculation: USD/oz × USD/INR ÷ 31.1034768 = theoretical 24K INR/gram; 22K and 18K are purity-adjusted. Indian duties, premiums, GST and making charges require separate treatment.</p>
       <p id="lastUpdated" class="tiny muted">No saved update yet.</p>
+      <p>
+        Gold data: <a href="https://xaudaily.com/" target="_blank">
+        XAU Daily</a> (CC BY 4.0).
+        Currency data: <a href="https://frankfurter.dev/"
+        target="_blank">Frankfurter</a>.
+      </p>
     </footer>
   </main>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
