@@ -69,3 +69,67 @@
     color: inherit;
     text-decoration: underline;
 }
+
+/* Two gold price sections */
+.price-section {
+    margin-top: 22px;
+    padding: 16px;
+    border-radius: 16px;
+    background: var(--card-bg, #1e293b);
+}
+
+.price-section h2 {
+    margin: 0 0 6px;
+    font-size: 18px;
+}
+
+.section-subtitle {
+    margin: 0 0 14px;
+    font-size: 12px;
+    color: var(--text-secondary, #94a3b8);
+}
+
+.purity-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.purity-card {
+    min-width: 0;
+    padding: 12px 8px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.purity-card span {
+    font-size: 13px;
+    color: var(--text-secondary, #94a3b8);
+}
+
+.purity-card strong {
+    font-size: clamp(15px, 4vw, 22px);
+    overflow-wrap: anywhere;
+}
+
+.purity-card small {
+    font-size: 10px;
+    color: var(--text-secondary, #94a3b8);
+}
+
+.indian-card {
+    border: 1px solid rgba(255,255,255,0.12);
+}
+
+@media (max-width: 360px) {
+    .purity-grid {
+        gap: 6px;
+    }
+
+    .purity-card {
+        padding: 9px 5px;
+    }
+}

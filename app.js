@@ -365,9 +365,26 @@ $("refreshBtn").addEventListener("click", async () => {
   ]);
 });
 
-if("serviceWorker" in navigator && location.protocol.startsWith("http"))navigator.serviceWorker.register("./sw.js").catch(console.warn);
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", async () => {
+    try {
+      const registration =
+        await navigator.serviceWorker.register("./sw.js", {
+          updateViaCache: "none"
+        });
+
+      await registration.update();
+
+      console.log("Gold Watch service worker updated");
+    } catch (error) {
+      console.error("Service worker error:", error);
+    }
+  });
+}
 window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredInstall=e;$("installBtn").classList.remove("hidden");});
 $("installBtn").addEventListener("click",async()=>{if(!deferredInstall)return;deferredInstall.prompt();await deferredInstall.userChoice;deferredInstall=null;$("installBtn").classList.add("hidden");});
+
+
 
 
 const INDIA_GOLD_API =
