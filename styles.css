@@ -133,3 +133,6 @@
         padding: 9px 5px;
     }
 }
+.stat-grid h2 {
+    grid-column: 1 / -1;
+  }
