@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111827">
+  <meta name="description" content="Personal gold market tracker with CME comparison and estimated Indian gold rates.">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <title>Gold Watch</title>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">Au</div>
+      <div><div class="brand-name">Gold Watch</div><div class="brand-sub">PERSONAL MARKET TRACKER</div></div>
+    </div>
+    <button id="installBtn" class="button button-quiet hidden">Install app</button>
+  </header>
+
+  <main class="container">
+    <section class="welcome">
+      <div>
+        <p class="eyebrow">YOUR GOLD MARKET SNAPSHOT</p>
+        <h1>Know the move.<br><span>Track your gold.</span></h1>
+        <p class="muted">Compare the previous settlement with the latest quote, then estimate Indian gold prices.</p>
+      </div>
+      <div class="market-status"><span class="status-dot"></span><span id="dataStatus">Waiting for your first price update</span></div>
+    </section>
+
+    <section class="grid two">
+      <article class="panel main-price">
+        <div class="panel-head"><span>International gold · CME / COMEX</span><span class="pill">USD / troy oz</span></div>
+        <div class="price-label">Latest price</div>
+        <div class="big-price" id="currentCme">$—</div>
+        <div class="change-line" id="cmeChange">Add a latest quote to begin</div>
+        <div class="comparison">
+          <div><span>Previous settlement</span><strong id="previousCme">$—</strong></div>
+          <div><span>Latest quote</span><strong id="latestCmeSmall">$—</strong></div>
+        </div>
+      </article>
+      <article class="panel indian-panel">
+        <div class="panel-head"><span>Indian estimated rate</span><span class="pill">INR / gram</span></div>
+        <div class="price-label">22K gold · estimated</div>
+        <div class="big-price" id="current22">₹—</div>
+        <div class="change-line" id="indianChange">Based on your saved inputs</div>
+        <div class="comparison">
+          <div><span>Yesterday</span><strong id="previous22">₹—</strong></div>
+          <div><span>Today</span><strong id="latest22">₹—</strong></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="grid three stat-grid">
+      <article class="stat panel"><span>24K · today</span><strong id="today24">₹—</strong><small>INR / gram</small></article>
+      <article class="stat panel"><span>22K · today</span><strong id="today22">₹—</strong><small>INR / gram</small></article>
+      <article class="stat panel"><span>18K · today</span><strong id="today18">₹—</strong><small>INR / gram</small></article>
+    </section>
+
+    <section class="panel">
+      <div class="section-heading">
+        <div><p class="eyebrow">MARKET HISTORY</p><h2>Recent movement</h2></div>
+        <select id="historyRange" aria-label="History range"><option value="7">Last 7 entries</option><option value="30">Last 30 entries</option><option value="90">Last 90 entries</option></select>
+      </div>
+      <div class="chart-wrap"><canvas id="historyChart" height="190" aria-label="Gold price history chart"></canvas><div id="emptyChart" class="empty-chart">Your saved price history will appear here.</div></div>
+      <div class="chart-legend"><span><i class="legend-dot gold"></i>Estimated 22K rate</span><span><i class="legend-dot grey"></i>CME quote (USD/oz)</span></div>
+    </section>
+
+    <section class="grid two">
+      <section class="panel">
+        <div class="section-heading"><div><p class="eyebrow">PRICE INPUTS</p><h2>Update market data</h2></div><span class="pill">Manual / CSV</span></div>
+        <p class="muted small">Enter the previous trading day's CME settlement and the latest CME quote. This first version does not scrape CME or claim to provide live quotes.</p>
+        <form id="priceForm" class="form-grid">
+          <label>Previous settlement · USD/oz<input id="prevCmeInput" type="number" step="0.01" min="0" placeholder="e.g. 4050.00" required></label>
+          <label>Previous settlement date<input id="prevDateInput" type="date" required></label>
+          <label>Latest CME quote · USD/oz<input id="currentCmeInput" type="number" step="0.01" min="0" placeholder="e.g. 4020.00" required></label>
+          <label>USD / INR rate<input id="fxInput" type="number" step="0.0001" min="0" placeholder="e.g. 89.50" required></label>
+          <label class="full">Latest quote date<input id="quoteDateInput" type="date" required></label>
+          <div class="form-actions"><button class="button button-primary" type="submit">Save price update</button><button class="button button-secondary" type="button" id="sampleBtn">Load sample</button></div>
+        </form>
+        <div class="divider"></div>
+        <details>
+          <summary>Indian market adjustment (optional)</summary>
+          <p class="muted small">The base conversion is theoretical. Add a configurable adjustment to model domestic landed-cost / local premium effects. Do not treat this as an official jeweller quote.</p>
+          <label>Adjustment on converted 24K value (%)<input id="adjustmentInput" type="number" step="0.01" value="0"></label>
+          <button id="saveAdjustment" class="button button-secondary compact" type="button">Save adjustment</button>
+        </details>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading"><div><p class="eyebrow">YOUR TARGETS</p><h2>Price alerts</h2></div><span class="pill" id="alertCount">0 active</span></div>
+        <form id="alertForm" class="form-grid">
+          <label>Rate type<select id="alertType"><option value="22">22K · INR / gram</option><option value="24">24K · INR / gram</option><option value="18">18K · INR / gram</option><option value="cme">CME · USD / oz</option></select></label>
+          <label>Condition<select id="alertCondition"><option value="below">Falls below</option><option value="above">Rises above</option></select></label>
+          <label class="full">Target price<input id="alertTarget" type="number" step="0.01" min="0" placeholder="Enter your target" required></label>
+          <button class="button button-primary full" type="submit">Add alert</button>
+        </form>
+        <div id="alertsList" class="alerts-list"><p class="muted small">No alerts configured yet.</p></div>
+        <p class="muted tiny">Alerts are checked when this page is open or refreshed. Browser notifications require permission and may not work on every browser setup.</p>
+      </section>
+    </section>
+
+    <section class="panel">
+      <div class="section-heading"><div><p class="eyebrow">LOCAL DATA</p><h2>Backup & data</h2></div></div>
+      <p class="muted small">Your entries, history and alerts are stored in this browser on this device. Export a backup before clearing browser data or changing devices.</p>
+      <div class="button-row">
+        <button id="exportBtn" class="button button-secondary">Export history CSV</button>
+        <label class="button button-secondary file-button">Import CSV<input id="importFile" type="file" accept=".csv,text/csv"></label>
+        <button id="clearBtn" class="button button-danger">Clear local data</button>
+      </div>
+    </section>
+
+    <footer>
+      <p><strong>Important:</strong> Gold Watch provides indicative calculations for personal tracking, not investment advice or a guaranteed Chennai retail rate. CME futures, Indian spot bullion and jewellery prices can differ. Prices are not fetched automatically in this starter version; enter verified quotes manually or import your own CSV.</p>
+      <p>Calculation: USD/oz × USD/INR ÷ 31.1034768 = theoretical 24K INR/gram; 22K and 18K are purity-adjusted. Indian duties, premiums, GST and making charges require separate treatment.</p>
+      <p id="lastUpdated" class="tiny muted">No saved update yet.</p>
+    </footer>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
